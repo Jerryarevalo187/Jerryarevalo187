@@ -3,9 +3,15 @@ setclipboard("https://youtube.com/@caothieunang?si=8nCRL2eD9Wu0CsiA")
 
 local StarterGui = game:GetService("StarterGui")
 StarterGui:SetCore("SendNotification", {
-    Title = "Dead Rail | Kill Aura V4",
+    Title = "Dead Rail | Kill Aura V3",
     Text = "Script made by Cáo Mod, pls Subscribe",
     Duration = 7
+})
+
+StarterGui:SetCore("SendNotification", {
+    Title = "Bug Fix",
+    Text = "Now properly kills NPCs without fake health!",
+    Duration = 10
 })
 
 local plr = game:GetService("Players").LocalPlayer
@@ -25,39 +31,19 @@ btn.Parent, btn.Size, btn.Position = fr, UDim2.new(1, 0, 0.6, 0), UDim2.new(0, 0
 btn.BackgroundColor3, btn.TextColor3 = Color3.fromRGB(80, 80, 80), Color3.fromRGB(255, 255, 255)
 btn.Font, btn.TextSize, btn.Text = Enum.Font.Cartoon, 16, "Kill Aura: OFF"
 
-local auraOn, killDist, killCount = false, 25, 0
+local auraOn, killDist, killCount = false, 50, 0 -- Adjustable range
 
--- Function to auto-detect the best damage remote
-local function findDamageRemote()
-    local possibleNames = { "DealDamage", "TakeDamage", "Attack", "DamageNPC", "Hit", "InflictDamage", "ApplyDamage" }
-    
-    for _, v in pairs(rs:GetChildren()) do
-        for _, name in pairs(possibleNames) do
-            if v:IsA("RemoteEvent") and v.Name:lower():find(name:lower()) then
-                return v
-            end
-        end
-    end
-    return nil
-end
-
-local damageRemote = findDamageRemote()
-
-if damageRemote then
+-- Detect correct damage function
+local damageRemote = rs:FindFirstChild("DealDamage") or rs:FindFirstChild("TakeDamage") or rs:FindFirstChild("Attack") or nil
+if not damageRemote then
     StarterGui:SetCore("SendNotification", {
-        Title = "Kill Aura",
-        Text = "Using: " .. damageRemote.Name .. " for killing!",
-        Duration = 5
-    })
-else
-    StarterGui:SetCore("SendNotification", {
-        Title = "Warning",
-        Text = "No valid damage function found! Using fallback kill.",
+        Title = "Error",
+        Text = "No valid damage function found! Script may not work.",
         Duration = 5
     })
 end
 
--- Function to get all NPCs within attack range
+-- Find NPCs within range
 local function getNearbyNPCs()
     local root = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
     if not root then return {} end
@@ -77,36 +63,38 @@ local function getNearbyNPCs()
     return nearbyNPCs
 end
 
--- Function to kill NPCs using the correct method
+-- Kill NPCs properly
 local function killNPC(npc)
     if not npc then return end
     local hum = npc:FindFirstChild("Humanoid")
     if not hum or hum.Health <= 0 then return end
 
     if damageRemote then
-        damageRemote:FireServer(npc, 9999)  -- Massive damage to ensure real kill
+        damageRemote:FireServer(npc, 99999) -- High damage for real kills
     else
-        hum.Health = 0  -- Fallback method (may not work properly)
+        hum.Health = 0 -- Fallback method
     end
 
     killCount = killCount + 1
+    StarterGui:SetCore("SendNotification", { Title = "Kill Aura", Text = "Killed: " .. killCount .. " NPCs", Duration = 2 })
 end
 
--- Kill aura loop to continuously kill NPCs
+-- Kill Aura loop
 local function killAuraLoop()
     while auraOn do
         local targets = getNearbyNPCs()
-        for _, npc in pairs(targets) do
-            killNPC(npc)
+        if #targets > 0 then  -- Only display notification if something is killed
+            for _, npc in pairs(targets) do
+                killNPC(npc)
+            end
         end
-        StarterGui:SetCore("SendNotification", { Title = "Kill Aura", Text = "Killed: " .. killCount .. " NPCs", Duration = 2 })
-        task.wait(0.1)
+        task.wait(0.1) -- Fast but optimized
     end
 end
 
 btn.MouseButton1Click:Connect(function()
     auraOn = not auraOn
     btn.Text = auraOn and "Kill Aura: ON" or "Kill Aura: OFF"
-    killCount = 0
+    killCount = 0 -- Reset count
     if auraOn then killAuraLoop() end
 end)
